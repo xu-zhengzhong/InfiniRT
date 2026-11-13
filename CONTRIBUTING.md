@@ -203,8 +203,9 @@ ruff check .
    `MACA_PATH`, `MUSA_ROOT`, `NEUWARE_HOME`, or `ASCEND_HOME_PATH`.
 2. **Switching between backends gives stale build errors**: Use a separate
    build directory per platform or delete the stale build directory.
-3. **Generated headers are stale**: Re-run CMake configure. Public headers are
-   generated during configuration.
+3. **Generated headers are stale**: Run `cmake --build build` before installing.
+   Changes to source headers or the generator trigger CMake reconfiguration.
+   Re-run CMake configure explicitly when changing backend options.
 4. **`test_install_consumer` fails to configure, link, or run**: Verify that the
    install prefix contains the CMake package, headers, and libraries. Check that
    `CMAKE_PREFIX_PATH` and the backend SDK root variables documented above are

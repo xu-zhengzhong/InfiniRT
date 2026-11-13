@@ -386,6 +386,14 @@ if(WITH_ASCEND)
     list(APPEND INFINI_RT_PUBLIC_HEADER_DEVICES ascend)
 endif()
 
+# Public headers are copied and rewritten at configure time. Track their
+# inputs so an incremental build cannot install stale declarations.
+file(GLOB_RECURSE INFINI_RT_PUBLIC_HEADER_INPUTS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_public_headers.py"
+    ${INFINI_RT_PUBLIC_HEADER_INPUTS})
+
 find_package(Python COMPONENTS Interpreter REQUIRED)
 execute_process(
     COMMAND ${Python_EXECUTABLE}

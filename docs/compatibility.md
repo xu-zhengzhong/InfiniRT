@@ -21,6 +21,11 @@ The stable user-facing surface is:
 - `infini::rt::runtime` types, dispatching functions, and constants documented in
   [Runtime API](api/runtime.md)
 
+The experimental sparse descriptor surface (`TensorLayout`, `SparseTensorView`,
+`ValidationResult`, `ValidationCode`, and `ValidationComponent`) is also
+available through this entry. Its supported scope and validation boundary are
+specified under [Sparse Contract and Release Boundary](#sparse-contract-and-release-boundary).
+
 ## Implementation-Facing Headers
 
 Installed headers under `infini/rt/detail/*` are generated to support the public
@@ -58,13 +63,13 @@ need ownership should explicitly materialize `TensorView::Shape` or
 
 ## Sparse Contract and Release Boundary
 
-**Status: RT1 source implementation complete; installed API pending RT2/RT3.**
+**Status: RT1 implementation and RT2 installed export complete; RT3 pending.**
 The [SparseTensorView contract](api/core-types.md#sparsetensorview-d0-contract)
 is implemented in `src/tensor_layout.h` and `src/sparse_tensor_view.h` / `.cc`.
-This additive surface is not yet part of `<infini/rt.h>`: RT2 must export it,
-and RT3 must validate the installed consumer. No sparse operators, C ABI,
-owning tensor framework, autograd engine, or Torch/sparse vendor-library
-dependency is introduced by RT1.
+RT2 exports this additive, experimental surface through `<infini/rt.h>` and
+verifies COO/CSR construction and component access against the installed
+library. No sparse operators, C ABI, owning tensor framework, autograd engine,
+or Torch/sparse vendor-library dependency is introduced by RT1/RT2.
 
 `TensorView` retains its dense meaning, object layout, hash, and equality.
 `SparseTensorView` is independent and must not satisfy dense interfaces by
@@ -90,12 +95,14 @@ completion on every consuming stream. These obligations also apply to
 framework wrappers and to interoperation with independently allocated
 components; copying a view does not transfer ownership.
 
-RT2 must connect the new types to header generation, include rewriting,
-umbrella export, and installation. RT3 must verify an external consumer using
-only `<infini/rt.h>` and the installed prefix, including Release rejection of
-bad metadata, valid empty components, overflow, and dense allocation/layout
-regressions. A successful source-tree include does not meet this boundary.
-D0 is documentation-only and provides no build or runtime validation evidence.
+RT2 connects the new types to header generation, include rewriting, umbrella
+export, and installation. The install smoke uses only `<infini/rt.h>` and the
+installed prefix for RT dependencies. Header and generator changes trigger
+regeneration on the next CMake build. RT3 still must provide the full metadata
+suite, including Release rejection of bad metadata, valid empty components,
+overflow, and dense allocation/layout regressions. The RT2 smoke does not
+replace this suite or establish any sparse compute capability. D0 remains a
+documentation-only contract.
 
 The RT headers and library must remain a matching build/release pair, and
 Ops headers, library, and wheel must be built against an identified matching

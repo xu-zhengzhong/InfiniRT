@@ -79,11 +79,11 @@ so a view cannot dangle from a temporary.
 
 ## SparseTensorView: D0 Contract
 
-**Status: RT1 source implementation available; installed API pending RT2/RT3.**
-`infini::rt::TensorLayout`, `infini::rt::SparseTensorView`, and
-`ValidationResult` are implemented in `src/tensor_layout.h` and
-`src/sparse_tensor_view.h` / `.cc` under the D0 contract below. They are not yet
-exported through `<infini/rt.h>`, and no sparse operators are implemented. See
+**Status: RT1 implementation and RT2 installed export available; RT3 pending.**
+`infini::rt::TensorLayout`, `infini::rt::SparseTensorView`, `ValidationResult`,
+`ValidationCode`, and `ValidationComponent` are available through
+`<infini/rt.h>` and the matching InfiniRT library. This experimental descriptor
+API follows the D0 contract below; no sparse operators are implemented. See
 [Compatibility](../compatibility.md#sparse-contract-and-release-boundary) for the
 implementation and release boundary.
 
@@ -134,18 +134,19 @@ CSR uses
 requirement. Invalid layout or state access must return a checked failure; it
 must not depend on a Release-disabled assertion.
 
-### RT1 Source API
+### C++ API (RT1/RT2)
 
-Source-tree consumers include `"sparse_tensor_view.h"` and link the matching
-InfiniRT library. RT2 will add public-header generation and installation;
-RT3 will validate the installed consumer. This example uses caller-owned
-storage that remains alive throughout the view's use:
+Consumers include `<infini/rt.h>` and link `InfiniRT::infinirt` from the matching
+installed package. RT2 verifies COO/CSR construction and component access in
+the installed consumer; RT3 will add the full metadata/error regression suite.
+This example uses caller-owned storage that remains alive throughout the
+view's use:
 
 ```cpp
 #include <cstdint>
 #include <optional>
 
-#include "sparse_tensor_view.h"
+#include <infini/rt.h>
 
 int main() {
   using namespace infini::rt;

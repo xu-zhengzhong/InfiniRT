@@ -117,7 +117,7 @@ def _rewrite_detail_include(match):
 
 
 _DETAIL_INCLUDE_PATTERN = re.compile(
-    r'#include "((?:common|native)/[^"]+|data_type\.h|device\.h|dispatcher\.h|driver\.h|hash\.h|runtime\.h|tensor_view\.h)"'
+    r'#include "((?:common|native)/[^"]+|data_type\.h|device\.h|dispatcher\.h|driver\.h|hash\.h|runtime\.h|tensor_layout\.h|tensor_view\.h|sparse_tensor_view\.h)"'
 )
 
 
@@ -152,7 +152,9 @@ def _write_detail_headers(include_root, source_root, devices):
         "driver.h",
         "hash.h",
         "runtime.h",
+        "tensor_layout.h",
         "tensor_view.h",
+        "sparse_tensor_view.h",
     }
 
     for device in devices:
@@ -205,7 +207,9 @@ enum class StreamCaptureMode {
         f"#include {_detail_include('driver.h')}",
         f"#include {_detail_include('hash.h')}",
         f"#include {_detail_include('runtime.h')}",
+        f"#include {_detail_include('tensor_layout.h')}",
         f"#include {_detail_include('tensor_view.h')}",
+        f"#include {_detail_include('sparse_tensor_view.h')}",
     ]
 
     for device in devices:

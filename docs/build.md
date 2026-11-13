@@ -58,7 +58,11 @@ directory when compiling against an NVIDIA build.
 
 During CMake configuration, InfiniRT generates backend-specific public headers
 under `generated/include`. The generated headers match the backend options used
-for that build and are installed with the hand-written headers.
+for that build and are installed with the hand-written headers. Changes to
+source headers or the generator script trigger regeneration on the next
+`cmake --build`; build before installing to keep headers and library aligned.
+The umbrella also exports the experimental COO/CSR descriptor types described
+in [Core Types](api/core-types.md#sparsetensorview-d0-contract).
 
 The recommended consumer include remains:
 
