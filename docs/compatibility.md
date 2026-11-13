@@ -56,3 +56,52 @@ need ownership should explicitly materialize `TensorView::Shape` or
 `TensorView::Strides`. The owning aliases support the common
 `Strides(count, value)` construction used by downstream metadata code.
 
+## Sparse Contract and Release Boundary
+
+**Status: D0 design frozen; sparse API unavailable.** The
+[SparseTensorView contract](api/core-types.md#sparsetensorview-d0-contract)
+defines a future additive C++ surface. It is not part of the stable user entry
+listed above until RT1/RT2 implement and export the types and RT3 validates the
+installed consumer. No C ABI, owning tensor framework, autograd engine, or
+Torch/sparse vendor-library dependency is introduced into InfiniRT by D0.
+
+`TensorView` retains its dense meaning, object layout, hash, and equality.
+`SparseTensorView` is independent and must not satisfy dense interfaces by
+inventing a single aggregate data pointer or strides. The initial sparse
+representation accepts only two-dimensional, contiguous-component COO/CSR,
+with int64 COO indices or matching int32/int64 CSR indices. CSC, BSR, BSC,
+batch, and hybrid representations remain explicitly unsupported. Describing
+components on a device does not imply that Ops can validate or compute on
+that device. Provider support must be declared and tested separately.
+
+Sparse factories validate metadata without reading data or synchronizing.
+The sparse `ValidationResult` contract is separate from existing runtime error
+types, and external invalid input is rejected in Release as well as Debug.
+Index-content validation and checked operator entry belong to InfiniOps;
+trusted input requires a validated, unchanged structure. Neither coalesced
+metadata nor descriptor equality proves index-content identity. Sparse
+metadata caches must not be treated as reusable structure-analysis plans.
+
+Output buffers remain caller-owned. No operator or bridge may silently
+replace a buffer, use capacity as valid `nnz`, or publish a pending/failed
+dynamic result. All component owners and execution resources survive through
+completion on every consuming stream. These obligations also apply to
+framework wrappers and to interoperation with independently allocated
+components; copying a view does not transfer ownership.
+
+RT1/RT2 must connect the new types to header generation, include rewriting,
+umbrella export, and installation. RT3 must verify an external consumer using
+only `<infini/rt.h>` and the installed prefix, including Release rejection of
+bad metadata, valid empty components, overflow, and dense allocation/layout
+regressions. A successful source-tree include does not meet this boundary.
+D0 is documentation-only and provides no build or runtime validation evidence.
+
+The RT headers and library must remain a matching build/release pair, and
+Ops headers, library, and wheel must be built against an identified matching
+RT revision or installation package. Cross-repository integration records
+that revision explicitly rather than depending on an unspecified latest RT.
+Preserving the current dense representation is a regression constraint, not
+a new promise of binary compatibility between arbitrary releases. Sparse
+releases must state their supported layouts, devices, dtypes, index widths,
+and experimental API status; unsupported combinations must fail explicitly
+without implicit densification, device transfer, or index narrowing.
