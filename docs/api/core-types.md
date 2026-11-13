@@ -79,10 +79,11 @@ so a view cannot dangle from a temporary.
 
 ## SparseTensorView: D0 Contract
 
-**Status: design frozen by D0; API unavailable.** This section defines the
-implementation contract for the planned `infini::rt::TensorLayout`,
-`infini::rt::SparseTensorView`, and `ValidationResult`. It does not add them to
-`<infini/rt.h>` or claim that sparse execution is supported. See
+**Status: RT1 source implementation available; installed API pending RT2/RT3.**
+`infini::rt::TensorLayout`, `infini::rt::SparseTensorView`, and
+`ValidationResult` are implemented in `src/tensor_layout.h` and
+`src/sparse_tensor_view.h` / `.cc` under the D0 contract below. They are not yet
+exported through `<infini/rt.h>`, and no sparse operators are implemented. See
 [Compatibility](../compatibility.md#sparse-contract-and-release-boundary) for the
 implementation and release boundary.
 
@@ -132,6 +133,65 @@ CSR uses
 `crow_indices()`, `col_indices()`, and `values()` without a COO-style coalesce
 requirement. Invalid layout or state access must return a checked failure; it
 must not depend on a Release-disabled assertion.
+
+### RT1 Source API
+
+Source-tree consumers include `"sparse_tensor_view.h"` and link the matching
+InfiniRT library. RT2 will add public-header generation and installation;
+RT3 will validate the installed consumer. This example uses caller-owned
+storage that remains alive throughout the view's use:
+
+```cpp
+#include <cstdint>
+#include <optional>
+
+#include "sparse_tensor_view.h"
+
+int main() {
+  using namespace infini::rt;
+  const Device cpu{Device::Type::kCpu};
+  std::int64_t coordinates[] = {0, 1, 1, 2};
+  float data[] = {3.0f, 4.0f};
+  const TensorView indices{coordinates, {2, 2}, DataType::kInt64, cpu};
+  const TensorView values{data, {2}, DataType::kFloat32, cpu};
+  std::optional<SparseTensorView> view;
+
+  const auto status = SparseTensorView::CreateCoo({2, 3}, indices, values, view);
+  if (!status) return 1;
+
+  const TensorView* raw = nullptr;
+  const auto access = view->raw_values(raw);
+  return access.ok() && raw->data() == data ? 0 : 1;
+}
+```
+
+`CreateCoo(shape, indices, values, out, coalesced = false)` and
+`CreateCsr(shape, crow_indices, col_indices, values, out)` return
+`ValidationResult` and populate `std::optional<SparseTensorView>` only after
+successful metadata checks. A failed call clears `out`. The general
+`Create(layout, shape, components, out, coalesced = false)` takes component
+pointers in COO `{indices, values}` or CSR `{crow_indices, col_indices, values}`
+order and rejects unsupported layouts and incorrect component counts. Shape
+is a `ShapeView`, `SparseTensorView::Shape` (`std::array<Size, 2>`), or
+initializer list of `TensorView::Size` extents.
+
+`ValidationResult` has `ValidationCode code`, `ValidationComponent component`,
+and optional `std::size_t position`; `ok()` and explicit boolean conversion
+check success. The RT codes are the metadata subset of D0, named with the
+repository's `k` prefix, such as `kIntegerOverflow` and `kInvalidState`.
+Successful results have no error position. Component accessors return this
+same result and write a borrowed `const TensorView*`, clearing it on failure.
+Those pointers must not outlive the descriptor; component access on a
+temporary descriptor is disabled. `is_coalesced(bool& out)` returns
+`kInvalidState` on CSR.
+
+The descriptor can be copy- or move-constructed; assignment is disabled like
+`TensorView`. Its `shape()` returns an owning `std::array<Size, 2>` by value.
+All supported metadata fits inline, so factory construction and descriptor
+copying allocate no host or device memory. `kAllocationFailure` is reserved
+for future representations that need metadata allocation. Empty components
+accept nonnegative strides without accessing storage; singleton dimensions
+do not constrain contiguous strides. Negative strides are always rejected.
 
 ### Metadata Validation and Content Validation
 

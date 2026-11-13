@@ -58,12 +58,13 @@ need ownership should explicitly materialize `TensorView::Shape` or
 
 ## Sparse Contract and Release Boundary
 
-**Status: D0 design frozen; sparse API unavailable.** The
-[SparseTensorView contract](api/core-types.md#sparsetensorview-d0-contract)
-defines a future additive C++ surface. It is not part of the stable user entry
-listed above until RT1/RT2 implement and export the types and RT3 validates the
-installed consumer. No C ABI, owning tensor framework, autograd engine, or
-Torch/sparse vendor-library dependency is introduced into InfiniRT by D0.
+**Status: RT1 source implementation complete; installed API pending RT2/RT3.**
+The [SparseTensorView contract](api/core-types.md#sparsetensorview-d0-contract)
+is implemented in `src/tensor_layout.h` and `src/sparse_tensor_view.h` / `.cc`.
+This additive surface is not yet part of `<infini/rt.h>`: RT2 must export it,
+and RT3 must validate the installed consumer. No sparse operators, C ABI,
+owning tensor framework, autograd engine, or Torch/sparse vendor-library
+dependency is introduced by RT1.
 
 `TensorView` retains its dense meaning, object layout, hash, and equality.
 `SparseTensorView` is independent and must not satisfy dense interfaces by
@@ -89,7 +90,7 @@ completion on every consuming stream. These obligations also apply to
 framework wrappers and to interoperation with independently allocated
 components; copying a view does not transfer ownership.
 
-RT1/RT2 must connect the new types to header generation, include rewriting,
+RT2 must connect the new types to header generation, include rewriting,
 umbrella export, and installation. RT3 must verify an external consumer using
 only `<infini/rt.h>` and the installed prefix, including Release rejection of
 bad metadata, valid empty components, overflow, and dense allocation/layout
