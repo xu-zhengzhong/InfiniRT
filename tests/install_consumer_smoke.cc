@@ -3,6 +3,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
+#include <limits>
 #include <optional>
 #include <vector>
 
@@ -100,6 +102,96 @@ int main() {
       !csr->col_indices(component) || component == nullptr ||
       component->data() != col_indices.data() || !csr->values(component) ||
       component == nullptr || component->data() != sparse_values.data()) {
+    return 1;
+  }
+
+  // Public error handling must stay active with NDEBUG, and failed factories
+  // must clear an already populated output rather than leave a stale view.
+  std::optional<SparseTensorView> checked;
+  const auto expect_rejected =
+      [&](const char* name, auto create, ValidationCode code,
+          ValidationComponent expected_component,
+          std::optional<std::size_t> position = std::nullopt) {
+        checked.emplace(*csr);
+        const auto status = create();
+        if (status.ok() || status || status.code != code ||
+            status.component != expected_component ||
+            status.position != position || checked.has_value()) {
+          std::cerr << "Installed sparse rejection failed: " << name << '\n';
+          return false;
+        }
+        return true;
+      };
+
+  const TensorView indices32{
+      coo_indices.data(), {2, 2}, DataType::kInt32, device};
+  if (!expect_rejected(
+          "COO index dtype",
+          [&] {
+            return SparseTensorView::CreateCoo(sparse_shape, indices32, values,
+                                               checked);
+          },
+          ValidationCode::kInvalidIndexType, ValidationComponent::kIndices) ||
+      !expect_rejected(
+          "CSR index width overflow",
+          [&] {
+            return SparseTensorView::CreateCsr(
+                {2, static_cast<std::size_t>(
+                        std::numeric_limits<std::int32_t>::max()) +
+                        1},
+                crow, col, values, checked);
+          },
+          ValidationCode::kIntegerOverflow, ValidationComponent::kShape, 1)) {
+    return 1;
+  }
+
+  // Empty COO can have null buffers, but empty CSR still needs M+1 row
+  // pointers. Exercise the int64 CSR overload through the installed library.
+  const TensorView empty_indices{nullptr, {2, 0}, DataType::kInt64, device};
+  const TensorView empty_values{nullptr, {0}, DataType::kFloat32, device};
+  const TensorView empty_col{nullptr, {0}, DataType::kInt64, device};
+  std::array<std::int64_t, 1> empty_crow_data{0};
+  const TensorView empty_crow{
+      empty_crow_data.data(), {1}, DataType::kInt64, device};
+  if (!SparseTensorView::CreateCoo({0, 3}, empty_indices, empty_values,
+                                   checked) ||
+      !checked || checked->nnz() != 0 || checked->numel() != 0 ||
+      !checked->is_coalesced(coalesced) || coalesced ||
+      !checked->raw_values(component) || component == nullptr ||
+      component->data() != nullptr ||
+      !SparseTensorView::CreateCsr({0, 3}, empty_crow, empty_col, empty_values,
+                                   checked) ||
+      !checked || checked->index_dtype() != DataType::kInt64 ||
+      checked->nnz() != 0 || checked->numel() != 0 ||
+      !checked->crow_indices(component) || component == nullptr ||
+      component->shape()[0] != 1) {
+    return 1;
+  }
+  if (!expect_rejected(
+          "empty CSR missing row pointer",
+          [&] {
+            return SparseTensorView::CreateCsr({0, 3}, empty_col, empty_col,
+                                               empty_values, checked);
+          },
+          ValidationCode::kInvalidMetadata,
+          ValidationComponent::kCrowIndices)) {
+    return 1;
+  }
+
+  // Generic creation and checked access are also part of the exported API.
+  if (!SparseTensorView::Create(TensorLayout::kCoo, sparse_shape,
+                                {&indices, &values}, checked, true) ||
+      !checked || !checked->is_coalesced(coalesced) || !coalesced ||
+      !checked->indices(component) || component == nullptr ||
+      component->data() != coo_indices.data() || !checked->values(component) ||
+      component == nullptr || component->data() != sparse_values.data()) {
+    return 1;
+  }
+  const auto wrong_layout_status = checked->crow_indices(component);
+  if (wrong_layout_status ||
+      wrong_layout_status.code != ValidationCode::kInvalidState ||
+      wrong_layout_status.component != ValidationComponent::kCrowIndices ||
+      wrong_layout_status.position.has_value() || component != nullptr) {
     return 1;
   }
 

@@ -79,7 +79,7 @@ so a view cannot dangle from a temporary.
 
 ## SparseTensorView: D0 Contract
 
-**Status: RT1 implementation and RT2 installed export available; RT3 pending.**
+**Status: RT1 implementation, RT2 installed export, and RT3 metadata tests implemented.**
 `infini::rt::TensorLayout`, `infini::rt::SparseTensorView`, `ValidationResult`,
 `ValidationCode`, and `ValidationComponent` are available through
 `<infini/rt.h>` and the matching InfiniRT library. This experimental descriptor
@@ -134,11 +134,15 @@ CSR uses
 requirement. Invalid layout or state access must return a checked failure; it
 must not depend on a Release-disabled assertion.
 
-### C++ API (RT1/RT2)
+### C++ API (RT1–RT3)
 
 Consumers include `<infini/rt.h>` and link `InfiniRT::infinirt` from the matching
-installed package. RT2 verifies COO/CSR construction and component access in
-the installed consumer; RT3 will add the full metadata/error regression suite.
+installed package. The installed consumer covers COO/CSR construction, checked
+component access, and error and empty-component cases. RT3 adds
+`tests/test_sparse_tensor_view.cc` for metadata, overflow, device, empty-component,
+and lifetime checks, with explicit checks that remain active in Release. Existing
+dense metadata and allocation tests provide regression coverage. Index-content
+validation and sparse computation remain future InfiniOps work.
 This example uses caller-owned storage that remains alive throughout the
 view's use:
 

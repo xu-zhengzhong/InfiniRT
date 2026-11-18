@@ -63,13 +63,13 @@ need ownership should explicitly materialize `TensorView::Shape` or
 
 ## Sparse Contract and Release Boundary
 
-**Status: RT1 implementation and RT2 installed export complete; RT3 pending.**
+**Status: RT1 implementation, RT2 installed export, and RT3 metadata tests implemented.**
 The [SparseTensorView contract](api/core-types.md#sparsetensorview-d0-contract)
 is implemented in `src/tensor_layout.h` and `src/sparse_tensor_view.h` / `.cc`.
 RT2 exports this additive, experimental surface through `<infini/rt.h>` and
 verifies COO/CSR construction and component access against the installed
 library. No sparse operators, C ABI, owning tensor framework, autograd engine,
-or Torch/sparse vendor-library dependency is introduced by RT1/RT2.
+or Torch/sparse vendor-library dependency is introduced by RT1–RT3.
 
 `TensorView` retains its dense meaning, object layout, hash, and equality.
 `SparseTensorView` is independent and must not satisfy dense interfaces by
@@ -98,10 +98,13 @@ components; copying a view does not transfer ownership.
 RT2 connects the new types to header generation, include rewriting, umbrella
 export, and installation. The install smoke uses only `<infini/rt.h>` and the
 installed prefix for RT dependencies. Header and generator changes trigger
-regeneration on the next CMake build. RT3 still must provide the full metadata
-suite, including Release rejection of bad metadata, valid empty components,
-overflow, and dense allocation/layout regressions. The RT2 smoke does not
-replace this suite or establish any sparse compute capability. D0 remains a
+regeneration on the next CMake build. RT3 adds
+`tests/test_sparse_tensor_view.cc` for metadata, overflow, device, empty-component,
+and lifetime checks, and extends the installed consumer with error and boundary
+cases. These checks remain active in Release. Existing `test_core`,
+`test_tensor_view_allocations`, and dense footprint benchmarks provide the dense
+regression coverage. These tests establish no sparse compute capability; Ops
+content validation and operators remain unimplemented. D0 remains a
 documentation-only contract.
 
 The RT headers and library must remain a matching build/release pair, and
